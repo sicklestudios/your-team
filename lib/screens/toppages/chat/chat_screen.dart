@@ -43,7 +43,9 @@ import 'package:yourteam/utils/SharedPreferencesUser.dart';
 class ChatScreen extends StatefulWidget {
   final ChatContactModel contactModel;
   final List<Message>? message;
-  const ChatScreen({super.key, this.message, required this.contactModel});
+  final bool? isGroupChat;
+  const ChatScreen(
+      {super.key, this.message, this.isGroupChat, required this.contactModel});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();

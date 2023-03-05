@@ -12,6 +12,7 @@ import 'package:yourteam/constants/message_reply.dart';
 import 'package:yourteam/methods/info_storage_methods.dart';
 import 'package:yourteam/methods/storage_methods.dart';
 import 'package:yourteam/models/chat_model.dart';
+import 'package:yourteam/models/group.dart';
 import 'package:yourteam/models/user_model.dart';
 import 'package:yourteam/service/local_push_notification.dart';
 
@@ -398,6 +399,20 @@ class ChatMethods {
         }
       }
       return contacts;
+    });
+  }
+
+  // stremas
+  Stream<List<Group>> getChatGroups() {
+    return firebaseFirestore.collection('groups').snapshots().map((event) {
+      List<Group> groups = [];
+      for (var document in event.docs) {
+        var group = Group.fromMap(document.data());
+        if (group.membersUid.contains(firebaseAuth.currentUser!.uid)) {
+          groups.add(group);
+        }
+      }
+      return groups;
     });
   }
 

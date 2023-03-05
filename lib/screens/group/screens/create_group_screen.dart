@@ -8,6 +8,9 @@ import 'package:yourteam/constants/constants.dart';
 import 'package:yourteam/constants/utils.dart';
 import 'package:yourteam/models/user_model.dart';
 import 'package:yourteam/screens/toppages/chat/colors.dart';
+import 'package:uuid/uuid.dart';
+import 'package:yourteam/methods/storage_methods.dart';
+import 'package:yourteam/models/group.dart' as model;
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({Key? key}) : super(key: key);
@@ -35,18 +38,66 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     }
     setState(() {});
   }
+  //   void createGroup() {
+  //   if (groupNameController.text.trim().isNotEmpty && image != null) {
 
-  void createGroup() {
-    // if (groupNameController.text.trim().isNotEmpty && image != null) {
-    //   ref.read(groupControllerProvider).createGroup(
-    //         context,
-    //         groupNameController.text.trim(),
-    //         image!,
-    //         ref.read(selectedGroupContacts),
-    //       );
-    //   ref.read(selectedGroupContacts.state).update((state) => []);
-    //   Navigator.pop(context);
-    // }
+  //     ref.read(groupControllerProvider).createGroup(
+  //           context,
+  //           groupNameController.text.trim(),
+  //           image!,
+  //           ref.read(selectedGroupContacts),
+  //         );
+  //     ref.read(selectedGroupContacts.state).update((state) => []);
+  //     Navigator.pop(context);
+  //   }
+  // }
+  void createGroup() async {
+    if (groupNameController.text.trim().isNotEmpty) {
+      try {
+        // List<String> uids = [];
+        // for (int i = 0; i < selectedContact.length; i++) {
+        //   var userCollection = await firebaseFirestore
+        //       .collection('users')
+        //       .where(
+        //         'phoneNumber',
+        //         isEqualTo: selectedContact[i].phones[0].number.replaceAll(
+        //               ' ',
+        //               '',
+        //             ),
+        //       )
+        //       .get();
+
+        //   if (userCollection.docs.isNotEmpty && userCollection.docs[0].exists) {
+        //     uids.add(userCollection.docs[0].data()['uid']);
+        //   }
+        // }
+        var groupId = const Uuid().v1();
+        String profileUrl = "";
+
+        if (image != null) {
+          profileUrl = await StorageMethods()
+              .storeFileToFirebase('group/$groupId', image!);
+        }
+
+        model.Group group = model.Group(
+          lastMessageBy: firebaseAuth.currentUser!.uid,
+          name: groupNameController.text.trim(),
+          groupId: groupId,
+          lastMessage: '',
+          groupPic: profileUrl,
+          membersUid: [firebaseAuth.currentUser!.uid, ...peopleUid],
+          timeSent: DateTime.now(),
+        );
+
+        await firebaseFirestore
+            .collection('groups')
+            .doc(groupId)
+            .set(group.toMap());
+        Navigator.pop(context);
+      } catch (e) {
+        showToastMessage(e.toString());
+      }
+    }
   }
 
   @override
@@ -61,7 +112,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         appBar: AppBar(
           actions: [
             IconButton(
-              onPressed: people.isEmpty ? createGroup : null,
+              onPressed: people.isNotEmpty ? createGroup : null,
               icon: Icon(
                 Icons.done,
                 color: people.isEmpty ? Colors.grey : Colors.white,

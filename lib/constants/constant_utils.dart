@@ -16,6 +16,7 @@ import 'package:yourteam/methods/chat_methods.dart';
 import 'package:yourteam/methods/contact_methods.dart';
 import 'package:yourteam/models/call_model.dart';
 import 'package:yourteam/models/chat_model.dart';
+import 'package:yourteam/models/group.dart';
 import 'package:yourteam/models/todo_model.dart';
 import 'package:yourteam/models/user_model.dart';
 import 'package:yourteam/screens/bottom_pages.dart/contacts_screen.dart';
@@ -117,7 +118,8 @@ getRandom() {
   return random.nextInt(3) + 0;
 }
 
-getMessageCard(ChatContactModel model, context) {
+getMessageCard(var model, context, {bool isGroupChat = false}) {
+  // Group model = models;
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
     child: Container(
@@ -129,9 +131,10 @@ getMessageCard(ChatContactModel model, context) {
           Navigator.of(context).push(MaterialPageRoute(
               builder: (context) => ChatScreen(
                     contactModel: ChatContactModel(
-                        contactId: model.contactId,
+                        contactId:
+                            isGroupChat ? model.groupId : model.contactId,
                         name: model.name,
-                        photoUrl: model.photoUrl,
+                        photoUrl: isGroupChat ? model.groupPic : model.photoUrl,
                         timeSent: DateTime.now(),
                         lastMessageBy: "",
                         lastMessageId: '',
@@ -141,32 +144,46 @@ getMessageCard(ChatContactModel model, context) {
         },
         leading: Stack(
           children: [
-            model.photoUrl != ""
-                ? CircleAvatar(
-                    radius: 25,
-                    backgroundImage: CachedNetworkImageProvider(
-                      model.photoUrl,
-                      // maxWidth: 50,
-                      // maxHeight: 50,
-                    ))
-                : const CircleAvatar(
-                    radius: 25, backgroundImage: AssetImage('assets/user.png')),
-            StreamBuilder<bool>(
-                stream: ChatMethods().getOnlineStream(model.contactId),
-                builder: (context, snapshot) {
-                  return Positioned(
-                      bottom: 1,
-                      right: 1,
-                      child: Icon(
-                        Icons.circle_rounded,
-                        size: 14,
-                        color: snapshot.data != null
-                            ? snapshot.data!
-                                ? Colors.green
-                                : Colors.grey
-                            : Colors.grey,
-                      ));
-                }),
+            isGroupChat
+                ? model.groupPic != ""
+                    ? CircleAvatar(
+                        radius: 25,
+                        backgroundImage: CachedNetworkImageProvider(
+                          model.groupPic,
+                          // maxWidth: 50,
+                          // maxHeight: 50,
+                        ))
+                    : const CircleAvatar(
+                        radius: 25,
+                        backgroundImage: AssetImage('assets/user.png'))
+                : model.photoUrl != ""
+                    ? CircleAvatar(
+                        radius: 25,
+                        backgroundImage: CachedNetworkImageProvider(
+                          model.photoUrl,
+                          // maxWidth: 50,
+                          // maxHeight: 50,
+                        ))
+                    : const CircleAvatar(
+                        radius: 25,
+                        backgroundImage: AssetImage('assets/user.png')),
+            if (!isGroupChat)
+              StreamBuilder<bool>(
+                  stream: ChatMethods().getOnlineStream(model.contactId),
+                  builder: (context, snapshot) {
+                    return Positioned(
+                        bottom: 1,
+                        right: 1,
+                        child: Icon(
+                          Icons.circle_rounded,
+                          size: 14,
+                          color: snapshot.data != null
+                              ? snapshot.data!
+                                  ? Colors.green
+                                  : Colors.grey
+                              : Colors.grey,
+                        ));
+                  }),
           ],
         ),
         title: Row(
@@ -221,6 +238,7 @@ getMessageCard(ChatContactModel model, context) {
                   ),
                 ),
               ),
+              // if (!isGroupChat)
               Icon(
                 Icons.circle,
                 color: model.lastMessageBy != firebaseAuth.currentUser!.uid

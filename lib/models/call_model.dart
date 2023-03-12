@@ -5,6 +5,7 @@ class CallModel {
   final DateTime timeSent;
   final bool isIncoming;
   final bool isAudioCall;
+  final bool isGroupCall;
 
   CallModel({
     required this.receiverId,
@@ -13,6 +14,7 @@ class CallModel {
     required this.timeSent,
     required this.isIncoming,
     required this.isAudioCall,
+    required this.isGroupCall,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class CallModel {
       'timeSent': timeSent.millisecondsSinceEpoch,
       'isIncoming': isIncoming,
       'isAudioCall': isAudioCall,
+      'isGroupCall': isGroupCall,
     };
   }
 
@@ -34,6 +37,7 @@ class CallModel {
       timeSent: DateTime.fromMillisecondsSinceEpoch(map['timeSent']),
       isIncoming: map['isIncoming'],
       isAudioCall: map['isAudioCall'],
+      isGroupCall: map['isGroupCall'] ?? false,
     );
   }
 }

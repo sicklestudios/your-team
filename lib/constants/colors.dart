@@ -11,7 +11,5 @@ final mainMaterialColor =
     const Color.fromRGBO(112, 103, 253, 1).toMaterialColor();
 
 List<Color> cardColors = [
-  // const Color.fromARGB(255, 133, 45, 39),
   const Color.fromRGBO(112, 103, 253, 0.7),
-  // const Color.fromARGB(255, 94, 48, 159),
 ];

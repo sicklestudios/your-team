@@ -9,13 +9,24 @@ import 'package:timeago/timeago.dart' as timeago;
 
 class FileScreen extends StatefulWidget {
   final String? id;
-  const FileScreen({this.id, super.key});
+  final bool? isGroupChat;
+
+  const FileScreen({this.id, this.isGroupChat, super.key});
 
   @override
   State<FileScreen> createState() => _FileScreenState();
 }
 
 class _FileScreenState extends State<FileScreen> {
+  bool isGroupChat = false;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isGroupChat != null) {
+      isGroupChat = widget.isGroupChat!;
+    }
+  }
+
   var dio = Dio();
   initialize() {
     try {
@@ -31,7 +42,9 @@ class _FileScreenState extends State<FileScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 20.0),
       child: FutureBuilder<List<DocsModel>>(
-          future: InfoStorage().getFile(),
+          future: isGroupChat
+              ? InfoStorageGroup().getFile(widget.id!)
+              : InfoStorage().getFile(widget.id, isGroupChat),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -64,7 +77,6 @@ class _FileScreenState extends State<FileScreen> {
                 shrinkWrap: true,
                 itemBuilder: ((context, index) {
                   var data = temp[index];
-
                   return _fileCard(data);
                 }));
           }),

@@ -89,6 +89,8 @@ class Message {
   final String repliedMessage;
   final String repliedTo;
   final MessageEnum repliedMessageType;
+  final String? senderUsername;
+  final List<String>? isMessageDeleted;
 
   Message({
     required this.senderId,
@@ -101,6 +103,8 @@ class Message {
     required this.repliedMessage,
     required this.repliedTo,
     required this.repliedMessageType,
+    this.senderUsername,
+    this.isMessageDeleted,
   });
 
   Map<String, dynamic> toMap() {
@@ -115,6 +119,8 @@ class Message {
       'repliedMessage': repliedMessage,
       'repliedTo': repliedTo,
       'repliedMessageType': repliedMessageType.type,
+      'senderUsername': senderUsername,
+      'isMessageDeleted': isMessageDeleted,
     };
   }
 
@@ -130,6 +136,8 @@ class Message {
       repliedMessage: map['repliedMessage'] ?? '',
       repliedTo: map['repliedTo'] ?? '',
       repliedMessageType: (map['repliedMessageType'] as String).toEnum(),
+      senderUsername: map['senderUsername'],
+      isMessageDeleted: map['isMessageDeleted'],
     );
   }
 }

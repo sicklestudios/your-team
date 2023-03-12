@@ -33,7 +33,8 @@ import 'package:yourteam/screens/call/call_methods.dart';
 import 'package:yourteam/screens/call/call_notification_sent.dart';
 import 'package:yourteam/screens/call/calls_ui/screens/dialScreen/dial_screen.dart';
 import 'package:yourteam/screens/task/add_task.dart';
-import 'package:yourteam/screens/toppages/chat/chat_profile_screen.dart';
+import 'package:yourteam/screens/toppages/chat/chat_profile_group/chat_profile_group.dart';
+import 'package:yourteam/screens/toppages/chat/chat_profile_group/chat_profile_screen.dart';
 import 'package:yourteam/screens/toppages/chat/forward_message_screen.dart';
 import 'package:yourteam/screens/toppages/chat/widgets/message_reply_preview.dart';
 import 'package:yourteam/screens/toppages/chat/widgets/my_message_card.dart';
@@ -44,8 +45,13 @@ class ChatScreen extends StatefulWidget {
   final ChatContactModel contactModel;
   final List<Message>? message;
   final bool? isGroupChat;
+  final List? people;
   const ChatScreen(
-      {super.key, this.message, this.isGroupChat, required this.contactModel});
+      {super.key,
+      this.people,
+      this.message,
+      this.isGroupChat,
+      required this.contactModel});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -53,18 +59,41 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen>
     with SingleTickerProviderStateMixin {
+  bool isGroupChat = false;
   UserModel? usermodel;
+  List tokensList = [];
   var user;
+  getTokensList() async {
+    for (var element in widget.people!) {
+      if (element != firebaseAuth.currentUser!.uid) {
+        await getNotificationToken(element);
+      }
+    }
+  }
+
+  getNotificationToken(String uid) async {
+    UserModel model = UserModel.getValuesFromSnap(
+        await firebaseFirestore.collection('users').doc(uid).get());
+    tokensList.add(model.token);
+  }
 
   getdata() async {
-    var doc = await firebaseFirestore
-        .collection('users')
-        .doc(widget.contactModel.contactId)
-        .get();
-    user = doc.data() as Map<dynamic, dynamic>;
-    CALLERDATA = user;
-    usermodel = UserModel.getValuesFromSnap(doc);
-    if (mounted) setState(() {});
+    if (!isGroupChat) {
+      var doc = await firebaseFirestore
+          .collection('users')
+          .doc(widget.contactModel.contactId)
+          .get();
+      user = doc.data() as Map<dynamic, dynamic>;
+      CALLERDATA = user;
+      usermodel = UserModel.getValuesFromSnap(doc);
+      if (mounted) setState(() {});
+    } else {
+      Map<dynamic, dynamic> values = {
+        'name': widget.contactModel.name,
+        'photoUrl': widget.contactModel.photoUrl,
+      };
+      CALLERDATA = values;
+    }
   }
 
   // Animation controller
@@ -89,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen>
     } else {
       _animationController.forward();
     }
-    log(_isExpanded.toString());
+    // log(_isExpanded.toString());
     _isExpanded = !_isExpanded;
   }
 
@@ -104,7 +133,7 @@ class _ChatScreenState extends State<ChatScreen>
             0,
           ),
           child: Container(
-              height: 150,
+              height: isGroupChat ? 110 : 150,
               width: 130,
               decoration: BoxDecoration(
                   color: whiteColor, borderRadius: BorderRadius.circular(15)),
@@ -115,52 +144,65 @@ class _ChatScreenState extends State<ChatScreen>
                   children: [
                     InkWell(
                       onTap: () {
-                        log("profile");
-                        Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => ChatProfileScreen(
-                                id: widget.contactModel.contactId)));
+                        if (_isExpanded) {
+                          _animationController.reverse();
+                          _isExpanded = !_isExpanded;
+                        }
+                        if (isGroupChat) {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) => ChatProfileGroup(
+                                    id: widget.contactModel.contactId,
+                                  )));
+                        } else {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) => ChatProfileScreen(
+                                    id: widget.contactModel.contactId,
+                                  )));
+                        }
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        children: const [
+                        children: [
                           Text(
-                            "Profile",
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            isGroupChat ? "Group Info" : "Profile",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Padding(
-                            padding: EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(8.0),
                             child: Icon(
-                              Icons.person,
+                              isGroupChat
+                                  ? Icons.groups_2_rounded
+                                  : Icons.person,
                               color: mainColor,
                             ),
                           )
                         ],
                       ),
                     ),
-                    InkWell(
-                      onTap: () {
-                        _showDeleteDialog();
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: const [
-                          Text(
-                            "Delete",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Icon(
-                              Icons.delete,
-                              color: Colors.red,
+                    if (!isGroupChat)
+                      InkWell(
+                        onTap: () {
+                          _showDeleteDialog();
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: const [
+                            Text(
+                              "Delete",
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                          )
-                        ],
+                            Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                              ),
+                            )
+                          ],
+                        ),
                       ),
-                    ),
                     InkWell(
                       onTap: () {
-                        log("press");
                         _showBlockDialog();
                       },
                       child: StreamBuilder<UserModel>(
@@ -174,7 +216,11 @@ class _ChatScreenState extends State<ChatScreen>
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Text(
-                                  isBlocked ? "Unblock" : "Block",
+                                  isGroupChat
+                                      ? "Leave"
+                                      : isBlocked
+                                          ? "Unblock"
+                                          : "Block",
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                 ),
@@ -208,11 +254,20 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
+    //checking if the chat is a group chat
+    if (widget.isGroupChat != null) {
+      isGroupChat = widget.isGroupChat!;
+    }
+    //getting the list of tokens of all the people in the group
+    if (isGroupChat) {
+      getTokensList();
+    }
 //getting the data of the user
     getdata();
-
-    //setting the typing to false just in case it was left on true
-    ChatMethods().stopTyping(widget.contactModel.contactId);
+    if (!isGroupChat) {
+      //setting the typing to false just in case it was left on true
+      ChatMethods().stopTyping(widget.contactModel.contactId);
+    }
 
     _animationController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 10))
@@ -222,12 +277,15 @@ class _ChatScreenState extends State<ChatScreen>
 
     _translateButton = Tween<double>(
       begin: -200,
-      end: 80,
+      end: isGroupChat ? 50 : 80,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    ChatMethods().setChatContactMessageSeen(widget.contactModel.contactId);
+
+    ChatMethods()
+        .setChatContactMessageSeen(widget.contactModel.contactId, isGroupChat);
+
     if (widget.message != null) {
       sendForwardedMessageToUser();
     }
@@ -253,7 +311,8 @@ class _ChatScreenState extends State<ChatScreen>
             text: element.text,
             recieverUserId: widget.contactModel.contactId,
             senderUser: userInfo,
-            messageReply: null);
+            messageReply: null,
+            isGroupChat: isGroupChat);
       } else {
         ChatMethods().sendForwardedFileMessage(
             context: context,
@@ -261,7 +320,8 @@ class _ChatScreenState extends State<ChatScreen>
             recieverUserId: widget.contactModel.contactId,
             senderUserData: userInfo,
             messageEnum: element.type,
-            messageReply: null);
+            messageReply: null,
+            isGroupChat: isGroupChat);
       }
     }
   }
@@ -388,6 +448,7 @@ class _ChatScreenState extends State<ChatScreen>
                                 ),
                               ),
                               if (_getBoolCreateCheck())
+                                // if (!isGroupChat)
                                 IconButton(
                                     onPressed: () {
                                       Navigator.of(context)
@@ -404,10 +465,17 @@ class _ChatScreenState extends State<ChatScreen>
                               IconButton(
                                   onPressed: () async {
                                     for (var id in messageId) {
-                                      ChatMethods().deleteSingleMessage(
-                                          recieverUserId:
-                                              widget.contactModel.contactId,
-                                          messageId: id);
+                                      if (isGroupChat) {
+                                        ChatMethods().deleteMessageInGroup(
+                                            groupId:
+                                                widget.contactModel.contactId,
+                                            messageId: id);
+                                      } else {
+                                        ChatMethods().deleteSingleMessage(
+                                            recieverUserId:
+                                                widget.contactModel.contactId,
+                                            messageId: id);
+                                      }
                                     }
                                     setStateToNormal();
                                   },
@@ -500,10 +568,16 @@ class _ChatScreenState extends State<ChatScreen>
                                               // maxWidth: 50,
                                               // maxHeight: 50,
                                             ))
-                                        : const CircleAvatar(
-                                            radius: 22,
-                                            backgroundImage:
-                                                AssetImage('assets/user.png')),
+                                        : isGroupChat
+                                            ? const CircleAvatar(
+                                                radius: 22,
+                                                child:
+                                                    Icon(Icons.groups_outlined))
+                                            : const CircleAvatar(
+                                                radius: 22,
+                                                backgroundImage: AssetImage(
+                                                    'assets/user.png'),
+                                              ),
                                     const SizedBox(
                                       width: 5,
                                     ),
@@ -517,42 +591,45 @@ class _ChatScreenState extends State<ChatScreen>
                                               color: Colors.black,
                                               fontWeight: FontWeight.bold),
                                         ),
-                                        StreamBuilder<bool>(
-                                            stream: ChatMethods()
-                                                .getOnlineStream(widget
-                                                    .contactModel.contactId),
-                                            builder: (context, snapshot) {
-                                              return Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.circle,
-                                                    color: snapshot.data != null
-                                                        ? snapshot.data!
-                                                            ? Colors.green
-                                                            : Colors.grey
-                                                        : Colors.grey,
-                                                    size: 14,
-                                                  ),
-                                                  Text(
-                                                    snapshot.data != null
-                                                        ? snapshot.data!
-                                                            ? "Online"
-                                                            : "Offline"
-                                                        : "Offline",
-                                                    style: TextStyle(
-                                                        color: snapshot.data !=
-                                                                null
-                                                            ? snapshot.data!
-                                                                ? Colors.green
-                                                                : Colors.grey
-                                                            : Colors.grey,
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.normal),
-                                                  ),
-                                                ],
-                                              );
-                                            }),
+                                        if (!isGroupChat)
+                                          StreamBuilder<bool>(
+                                              stream: ChatMethods()
+                                                  .getOnlineStream(widget
+                                                      .contactModel.contactId),
+                                              builder: (context, snapshot) {
+                                                return Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.circle,
+                                                      color:
+                                                          snapshot.data != null
+                                                              ? snapshot.data!
+                                                                  ? Colors.green
+                                                                  : Colors.grey
+                                                              : Colors.grey,
+                                                      size: 14,
+                                                    ),
+                                                    Text(
+                                                      snapshot.data != null
+                                                          ? snapshot.data!
+                                                              ? "Online"
+                                                              : "Offline"
+                                                          : "Offline",
+                                                      style: TextStyle(
+                                                          color: snapshot
+                                                                      .data !=
+                                                                  null
+                                                              ? snapshot.data!
+                                                                  ? Colors.green
+                                                                  : Colors.grey
+                                                              : Colors.grey,
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight
+                                                              .normal),
+                                                    ),
+                                                  ],
+                                                );
+                                              }),
                                       ],
                                     ),
                                   ],
@@ -645,6 +722,7 @@ class _ChatScreenState extends State<ChatScreen>
                         const SizedBox(
                           height: 10,
                         ),
+                        // if (!isGroupChat)
                         _TabSwitch(
                           value: pageIndex,
                           callBack: () {
@@ -706,12 +784,23 @@ class _ChatScreenState extends State<ChatScreen>
                                                               firebaseAuth
                                                                   .currentUser!
                                                                   .uid) {
+                                                        if (!isGroupChat) {
+                                                          ChatMethods()
+                                                              .setChatMessageSeen(
+                                                            widget.contactModel
+                                                                .contactId,
+                                                            messageData
+                                                                .messageId,
+                                                          );
+                                                        }
+                                                      }
+                                                      if (isGroupChat) {
                                                         ChatMethods()
-                                                            .setChatMessageSeen(
-                                                          widget.contactModel
-                                                              .contactId,
-                                                          messageData.messageId,
-                                                        );
+                                                            .setChatContactMessageSeen(
+                                                                widget
+                                                                    .contactModel
+                                                                    .contactId,
+                                                                isGroupChat);
                                                       }
                                                       //showing the time
                                                       var dateInList =
@@ -826,9 +915,9 @@ class _ChatScreenState extends State<ChatScreen>
                                                               date: timeSent,
                                                               type: messageData
                                                                   .type,
-                                                              username:
-                                                                  messageData
-                                                                      .repliedTo,
+                                                              username: messageData
+                                                                      .senderUsername ??
+                                                                  "",
                                                               isSelected: messageId
                                                                   .contains(
                                                                       messageData
@@ -840,6 +929,8 @@ class _ChatScreenState extends State<ChatScreen>
                                                               repliedText:
                                                                   messageData
                                                                       .repliedMessage,
+                                                              isGroupChat:
+                                                                  isGroupChat,
                                                             ),
                                                           ),
                                                         ],
@@ -850,11 +941,17 @@ class _ChatScreenState extends State<ChatScreen>
                                                 }),
                                               )
                                             : StreamBuilder<List<Message>>(
-                                                stream: ChatMethods()
-                                                    .getChatStream(widget
-                                                        .contactModel
-                                                        .contactId),
+                                                stream: isGroupChat
+                                                    ? ChatMethods()
+                                                        .getGroupChatStream(
+                                                            widget.contactModel
+                                                                .contactId)
+                                                    : ChatMethods()
+                                                        .getChatStream(widget
+                                                            .contactModel
+                                                            .contactId),
                                                 builder: (context, snapshot) {
+                                                  isShown = false;
                                                   isTyping = false;
 
                                                   if (snapshot
@@ -880,26 +977,54 @@ class _ChatScreenState extends State<ChatScreen>
                                                               .offset);
                                                     });
                                                   }
+
+                                                  //in case of group chat checking if the message is deleted by the user
+                                                  List<Message> messagesList =
+                                                      [];
+                                                  if (isGroupChat) {
+                                                    for (var element
+                                                        in snapshot.data!) {
+                                                      Message message = element;
+                                                      if (message
+                                                              .isMessageDeleted !=
+                                                          null) {
+                                                        if (!message
+                                                            .isMessageDeleted!
+                                                            .contains(
+                                                                firebaseAuth
+                                                                    .currentUser!
+                                                                    .uid)) {
+                                                          messagesList
+                                                              .add(message);
+                                                        }
+                                                      } else {
+                                                        messagesList
+                                                            .add(message);
+                                                      }
+                                                    }
+                                                  } else {
+                                                    messagesList =
+                                                        snapshot.data!;
+                                                  }
                                                   return ListView.builder(
                                                     key: listViewKey,
                                                     controller:
                                                         messageController,
                                                     itemCount:
-                                                        snapshot.data!.length +
-                                                            1,
+                                                        messagesList.length + 1,
                                                     physics:
                                                         const ClampingScrollPhysics(),
                                                     shrinkWrap: true,
                                                     itemBuilder:
                                                         ((context, index) {
                                                       tempMessage =
-                                                          snapshot.data!;
+                                                          messagesList;
                                                       var messageData;
                                                       if (index !=
                                                           snapshot
                                                               .data!.length) {
-                                                        messageData = snapshot
-                                                            .data![index];
+                                                        messageData =
+                                                            messagesList[index];
                                                         if (messageData
                                                                 .messageId ==
                                                             messageData
@@ -917,15 +1042,26 @@ class _ChatScreenState extends State<ChatScreen>
                                                                   firebaseAuth
                                                                       .currentUser!
                                                                       .uid) {
-                                                            ChatMethods()
-                                                                .setChatMessageSeen(
-                                                              widget
-                                                                  .contactModel
-                                                                  .contactId,
-                                                              messageData
-                                                                  .messageId,
-                                                            );
+                                                            if (!isGroupChat) {
+                                                              ChatMethods()
+                                                                  .setChatMessageSeen(
+                                                                widget
+                                                                    .contactModel
+                                                                    .contactId,
+                                                                messageData
+                                                                    .messageId,
+                                                              );
+                                                            }
                                                           }
+                                                          if (isGroupChat) {
+                                                            ChatMethods()
+                                                                .setChatContactMessageSeen(
+                                                                    widget
+                                                                        .contactModel
+                                                                        .contactId,
+                                                                    isGroupChat);
+                                                          }
+
                                                           //showing the time
                                                           var dateInList = DateFormat
                                                                   .MMMMEEEEd()
@@ -1015,31 +1151,30 @@ class _ChatScreenState extends State<ChatScreen>
                                                                       messageData
                                                                           .messageId);
                                                                 },
-                                                                child:
-                                                                    SenderMessageCard(
-                                                                  photoUrl: widget
-                                                                      .contactModel
-                                                                      .photoUrl,
-                                                                  message:
-                                                                      messageData
-                                                                          .text,
-                                                                  date:
-                                                                      timeSent,
-                                                                  type:
-                                                                      messageData
-                                                                          .type,
-                                                                  username:
-                                                                      messageData
-                                                                          .repliedTo,
-                                                                  repliedMessageType:
-                                                                      messageData
-                                                                          .repliedMessageType,
-                                                                  longPress:
-                                                                      changeShowOptions,
-                                                                  repliedText:
-                                                                      messageData
-                                                                          .repliedMessage,
-                                                                ),
+                                                                child: SenderMessageCard(
+                                                                    photoUrl: widget
+                                                                        .contactModel
+                                                                        .photoUrl,
+                                                                    message:
+                                                                        messageData
+                                                                            .text,
+                                                                    date:
+                                                                        timeSent,
+                                                                    type: messageData
+                                                                        .type,
+                                                                    username:
+                                                                        messageData.senderUsername ??
+                                                                            "",
+                                                                    repliedMessageType:
+                                                                        messageData
+                                                                            .repliedMessageType,
+                                                                    longPress:
+                                                                        changeShowOptions,
+                                                                    repliedText:
+                                                                        messageData
+                                                                            .repliedMessage,
+                                                                    isGroupChat:
+                                                                        isGroupChat),
                                                               ),
                                                             ],
                                                           );
@@ -1050,29 +1185,43 @@ class _ChatScreenState extends State<ChatScreen>
                                                                   .length &&
                                                           isTyping) {
                                                         return SenderMessageCard(
-                                                          photoUrl: "",
-                                                          message: "Typing...",
-                                                          date: "null",
-                                                          type:
-                                                              MessageEnum.text,
-                                                          username: "",
-                                                          repliedMessageType:
-                                                              MessageEnum.text,
-                                                          longPress: () {},
-                                                          repliedText: '',
-                                                        );
+                                                            photoUrl: "",
+                                                            message:
+                                                                "Typing...",
+                                                            date: "null",
+                                                            type: MessageEnum
+                                                                .text,
+                                                            username: "",
+                                                            repliedMessageType:
+                                                                MessageEnum
+                                                                    .text,
+                                                            longPress: () {},
+                                                            repliedText: '',
+                                                            isGroupChat:
+                                                                isGroupChat);
                                                       }
                                                       return const SizedBox();
                                                     }),
                                                   );
                                                 })),
-                                    MyTextField(model: widget.contactModel),
+                                    MyTextField(
+                                      model: widget.contactModel,
+                                      isGroupChat: isGroupChat,
+                                    ),
                                   ],
                                 ),
                               )
-                            : Expanded(
-                                child: TodoScreen(
-                                    id: widget.contactModel.contactId)),
+                            : isGroupChat
+                                ? Expanded(
+                                    child: TodoScreen(
+                                    // id: widget.contactModel.contactId,
+                                    isGroupChat: isGroupChat,
+                                    people: widget.people,
+                                  ))
+                                : Expanded(
+                                    child: TodoScreen(
+                                    id: widget.contactModel.contactId,
+                                  )),
                       ],
                     )),
               ),
@@ -1084,28 +1233,54 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   _showBlockDialog() {
-    showDialog(
-        context: context,
-        builder: (ctxt) => AlertDialog(
-              title: const Text("Alert"),
-              content: Text(isBlocked
-                  ? "You are about to unblock ${widget.contactModel.name}"
-                  : "Are you sure you want to block this user?"),
-              actions: [
-                ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Cancel")),
-                ElevatedButton(
-                    onPressed: () {
-                      ChatMethods()
-                          .blockUnblockUser(widget.contactModel.contactId);
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Continue")),
-              ],
-            ));
+    if (isGroupChat) {
+      showDialog(
+          context: context,
+          builder: (ctxt) => AlertDialog(
+                title: const Text("Alert"),
+                content:
+                    const Text("Are you sure you want to leave this group?"),
+                actions: [
+                  ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Cancel")),
+                  ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          backgroundColor: Colors.red[100]),
+                      onPressed: () {
+                        ChatMethods().leaveGroup(widget.contactModel.contactId);
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Leave")),
+                ],
+              ));
+    } else {
+      showDialog(
+          context: context,
+          builder: (ctxt) => AlertDialog(
+                title: const Text("Alert"),
+                content: Text(isBlocked
+                    ? "You are about to unblock ${widget.contactModel.name}"
+                    : "Are you sure you want to block this user?"),
+                actions: [
+                  ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Cancel")),
+                  ElevatedButton(
+                      onPressed: () {
+                        ChatMethods()
+                            .blockUnblockUser(widget.contactModel.contactId);
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Continue")),
+                ],
+              ));
+    }
   }
 
   _showDeleteDialog() {
@@ -1122,8 +1297,11 @@ class _ChatScreenState extends State<ChatScreen>
                     child: const Text("Cancel")),
                 ElevatedButton(
                     onPressed: () {
-                      ChatMethods()
-                          .deleteContactMessage(widget.contactModel.contactId);
+                      {
+                        ChatMethods().deleteContactMessage(
+                            widget.contactModel.contactId);
+                      }
+
                       Navigator.pop(context);
                     },
                     child: const Text("Continue")),
@@ -1132,14 +1310,23 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> callsetting({required bool calltype}) async {
-    CallMethods().storeCallInfo(widget.contactModel.contactId,
-        widget.contactModel.name, widget.contactModel.photoUrl, calltype);
+    CallMethods().storeCallInfo(
+        widget.contactModel.contactId,
+        widget.contactModel.name,
+        widget.contactModel.photoUrl,
+        calltype,
+        isGroupChat);
 
     setState(() {
       appValueNotifier.globalisCallOnGoing.value = true;
     });
-    CHANNEL_NAME =
-        widget.contactModel.contactId + firebaseAuth.currentUser!.uid;
+    if (isGroupChat) {
+      CHANNEL_NAME = widget.contactModel.contactId;
+    } else {
+      CHANNEL_NAME =
+          widget.contactModel.contactId + firebaseAuth.currentUser!.uid;
+    }
+
     // var response = await get_call_token();
     // CHANNEL_NAME = response['channelname'];
     // TOKEN = response['token'];
@@ -1152,7 +1339,8 @@ class _ChatScreenState extends State<ChatScreen>
       'token': {'token': TOKEN, 'channelname': CHANNEL_NAME},
       'call_type':
           VIDEO_OR_AUDIO_FLG == false ? "video_channel" : "call_channel",
-      'user_info': userInfo,
+      'user_info': isGroupChat ? null : userInfo,
+      'groupCall': isGroupChat,
       'uid': userInfo.uid,
     };
     print(msg);
@@ -1207,10 +1395,23 @@ class _ChatScreenState extends State<ChatScreen>
       ),
     );
     await FlutterCallkitIncoming.startCall(params);
+    if (!isGroupChat) {
+      sendFcmCall(msg, usermodel!.token);
+    } else {
+      for (var element in tokensList) {
+        sendFcmCall(msg, element);
+      }
+    }
+  }
 
+  void sendFcmCall(msg, String token) async {
     await send_fcm_call(
-        token: usermodel?.token,
-        name: userInfo == null ? "" : userInfo.username,
+        token: token,
+        name: isGroupChat
+            ? widget.contactModel.name
+            : userInfo == null
+                ? ""
+                : userInfo.username,
         title: "Call",
         msg: msg,
         btnstatus:
@@ -1220,8 +1421,9 @@ class _ChatScreenState extends State<ChatScreen>
 
 class MyTextField extends StatefulWidget {
   final ChatContactModel model;
-
-  const MyTextField({required this.model, super.key});
+  final bool isGroupChat;
+  const MyTextField(
+      {required this.model, required this.isGroupChat, super.key});
 
   @override
   State<MyTextField> createState() => _MyTextFieldState();
@@ -1240,7 +1442,9 @@ class _MyTextFieldState extends State<MyTextField> {
   @override
   void initState() {
     super.initState();
-    getBlock();
+    if (!widget.isGroupChat) {
+      getBlock();
+    }
     _controller = RecorderController();
     _controller!.updateFrequency =
         const Duration(milliseconds: 100); // Update speed of new wave
@@ -1287,10 +1491,13 @@ class _MyTextFieldState extends State<MyTextField> {
             text: _messageController.text.trim(),
             recieverUserId: widget.model.contactId,
             senderUser: userInfo,
-            messageReply: null);
+            messageReply: null,
+            isGroupChat: widget.isGroupChat);
         setState(() {
           _messageController.text = '';
-          ChatMethods().stopTyping(widget.model.contactId);
+          if (!widget.isGroupChat) {
+            ChatMethods().stopTyping(widget.model.contactId);
+          }
         });
       }
     } else {
@@ -1343,7 +1550,8 @@ class _MyTextFieldState extends State<MyTextField> {
         recieverUserId: widget.model.contactId,
         messageEnum: messageEnum,
         senderUserData: userInfo,
-        messageReply: null);
+        messageReply: null,
+        isGroupChat: widget.isGroupChat);
   }
 
   void selectFile() async {
@@ -1398,8 +1606,218 @@ class _MyTextFieldState extends State<MyTextField> {
     }
   }
 
+  Widget getTextField() {
+    return Column(
+      children: [
+        if (messageReply != null)
+          MessageReplyPreview(
+              photoUrl: widget.model.photoUrl, messageReply: messageReply),
+        Row(
+          children: [
+            if (isRecording)
+              AudioWaveforms(
+                size: Size(MediaQuery.of(context).size.width / 1.95, 30.0),
+                recorderController: _controller!,
+                enableGesture: false,
+                padding: const EdgeInsets.all(20),
+                waveStyle: const WaveStyle(
+                  waveColor: mainColor,
+                  waveThickness: 5,
+                  backgroundColor: Colors.black,
+                  showDurationLabel: true,
+                  spacing: 8.0,
+                  durationStyle: TextStyle(color: mainColor),
+                  showBottom: true,
+                  extendWaveform: true,
+                  durationLinesColor: mainColor,
+                  showMiddleLine: false,
+                  //   gradient: ui.Gradient.linear(
+                  //     const Offset(70, 50),
+                  //     // Offset(MediaQuery.of(context).size.width / 2, 0),
+                  //     [Colors.red, Colors.green],
+                  // ),
+                ),
+              ),
+            if (!isRecording)
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        focusNode: focusNode,
+                        controller: _messageController,
+                        autofocus: false,
+                        maxLines: 10,
+                        minLines: 1,
+                        // onFieldSubmitted: (val) {
+                        //   if (_messageController
+                        //       .text.isNotEmpty) {
+                        //     sendTextMessage();
+                        //   }
+                        // },
+                        onChanged: (val) {
+                          if (!isBlocked) {
+                            // log(isBlocked.toString());
+                            if (!widget.isGroupChat) {
+                              ChatMethods().setTyping(widget.model.contactId);
+                            }
+                          }
+
+                          _messageController.selection =
+                              TextSelection.collapsed(
+                                  offset: _messageController.text.length);
+
+                          if (val.isNotEmpty) {
+                            if (!isShowSendButton) {
+                              // ChatMethods()
+                              //     .updateTyping(widget.model.contactId, true);
+                              setState(() {
+                                isShowSendButton = true;
+                              });
+                            }
+                          } else {
+                            // ChatMethods().updateTyping(widget.model.contactId, false);
+                            setState(() {
+                              isShowSendButton = false;
+                            });
+                            if (!widget.isGroupChat) {
+                              ChatMethods().stopTyping(widget.model.contactId);
+                            }
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Message',
+                          prefixIcon: IconButton(
+                            onPressed: toggleEmojiKeyboardContainer,
+                            icon: const Icon(
+                              Icons.emoji_emotions,
+                              color: mainColor,
+                            ),
+                          ),
+                          suffixIcon: SizedBox(
+                            width: isShowSendButton ? 0 : 100,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  onPressed: selectFile,
+                                  color: Colors.grey,
+                                  icon: const Icon(Icons.attach_file),
+                                ),
+                                if (!isShowSendButton)
+                                  IconButton(
+                                    onPressed: selectImage,
+                                    color: Colors.grey,
+                                    icon: const Icon(Icons.camera_alt),
+                                  )
+                              ],
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(
+                              color: mainColor,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(
+                              color: mainColor,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(
+              width: 10,
+            ),
+            if (isRecording)
+              Expanded(
+                child: InkWell(
+                    onTap: () {
+                      cancelRecording();
+                    },
+                    child: const CircleAvatar(
+                      radius: 28,
+                      child: Icon(
+                        Icons.close,
+                        // ? Icons.close
+                        // : Icons.mic,
+
+                        size: 35,
+                        color: Colors.red,
+                      ),
+                    )),
+              ),
+            const SizedBox(
+              width: 5,
+            ),
+            InkWell(
+                onTap: () {
+                  sendTextMessage();
+                },
+                child: CircleAvatar(
+                  radius: 28,
+                  child: Icon(
+                    isShowSendButton
+                        ? Icons.send
+                        : isRecording
+                            ? Icons.send
+                            : Icons.mic,
+                    // ? Icons.close
+                    // : Icons.mic,
+
+                    size: 35,
+                  ),
+                ))
+          ],
+        ),
+        isShowEmojiContainer
+            ? SizedBox(
+                height: 310,
+                child: EmojiPicker(
+                  onEmojiSelected: ((category, emoji) {
+                    setState(() {
+                      _messageController.text =
+                          _messageController.text + emoji.emoji;
+                      _messageController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: _messageController.text.length));
+                    });
+                    //       TextSelection(
+                    //           baseOffset:
+                    //               (_messageController.text +
+                    //                       emoji.emoji)
+                    //                   .length,
+                    //           extentOffset:
+                    //               (_messageController.text +
+                    //                       emoji.emoji)
+                    //                   .length);
+                    // });
+
+                    if (!isShowSendButton) {
+                      setState(() {
+                        isShowSendButton = true;
+                      });
+                    }
+                  }),
+                ),
+              )
+            : const SizedBox(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // if(widget.isGroupChat)
+    // {
+
+    // }
     return StreamBuilder<UserModel>(
         stream: ChatMethods().getBlockStatus(),
         builder: (context, snapshot) {
@@ -1408,402 +1826,190 @@ class _MyTextFieldState extends State<MyTextField> {
               padding: const EdgeInsets.only(bottom: 25, right: 15, left: 15),
               child: snapshot.data!.blockList.contains(widget.model.contactId)
                   ? const Text("You have blocked this user")
-                  : Column(
-                      children: [
-                        if (messageReply != null)
-                          MessageReplyPreview(
-                              photoUrl: widget.model.photoUrl,
-                              messageReply: messageReply),
-                        Row(
-                          children: [
-                            if (isRecording)
-                              AudioWaveforms(
-                                size: Size(
-                                    MediaQuery.of(context).size.width / 1.95,
-                                    30.0),
-                                recorderController: _controller!,
-                                enableGesture: false,
-                                padding: const EdgeInsets.all(20),
-                                waveStyle: const WaveStyle(
-                                  waveColor: mainColor,
-                                  waveThickness: 5,
-                                  backgroundColor: Colors.black,
-                                  showDurationLabel: true,
-                                  spacing: 8.0,
-                                  durationStyle: TextStyle(color: mainColor),
-                                  showBottom: true,
-                                  extendWaveform: true,
-                                  durationLinesColor: mainColor,
-                                  showMiddleLine: false,
-                                  //   gradient: ui.Gradient.linear(
-                                  //     const Offset(70, 50),
-                                  //     // Offset(MediaQuery.of(context).size.width / 2, 0),
-                                  //     [Colors.red, Colors.green],
-                                  // ),
-                                ),
-                              ),
-                            if (!isRecording)
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        focusNode: focusNode,
-                                        controller: _messageController,
-                                        autofocus: false,
-                                        maxLines: 10,
-                                        minLines: 1,
-                                        // onFieldSubmitted: (val) {
-                                        //   if (_messageController
-                                        //       .text.isNotEmpty) {
-                                        //     sendTextMessage();
-                                        //   }
-                                        // },
-                                        onChanged: (val) {
-                                          if (!isBlocked) {
-                                            // log(isBlocked.toString());
-                                            ChatMethods().setTyping(
-                                                widget.model.contactId);
-                                          }
-
-                                          _messageController.selection =
-                                              TextSelection.collapsed(
-                                                  offset: _messageController
-                                                      .text.length);
-
-                                          if (val.isNotEmpty) {
-                                            if (!isShowSendButton) {
-                                              // ChatMethods()
-                                              //     .updateTyping(widget.model.contactId, true);
-                                              setState(() {
-                                                isShowSendButton = true;
-                                              });
-                                            }
-                                          } else {
-                                            // ChatMethods().updateTyping(widget.model.contactId, false);
-                                            setState(() {
-                                              isShowSendButton = false;
-                                            });
-                                            ChatMethods().stopTyping(
-                                                widget.model.contactId);
-                                          }
-                                        },
-                                        decoration: InputDecoration(
-                                          hintText: 'Message',
-                                          prefixIcon: IconButton(
-                                            onPressed:
-                                                toggleEmojiKeyboardContainer,
-                                            icon: const Icon(
-                                              Icons.emoji_emotions,
-                                              color: mainColor,
-                                            ),
-                                          ),
-                                          suffixIcon: SizedBox(
-                                            width: isShowSendButton ? 0 : 100,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.end,
-                                              children: [
-                                                IconButton(
-                                                  onPressed: selectFile,
-                                                  color: Colors.grey,
-                                                  icon: const Icon(
-                                                      Icons.attach_file),
-                                                ),
-                                                if (!isShowSendButton)
-                                                  IconButton(
-                                                    onPressed: selectImage,
-                                                    color: Colors.grey,
-                                                    icon: const Icon(
-                                                        Icons.camera_alt),
-                                                  )
-                                              ],
-                                            ),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderSide: const BorderSide(
-                                              color: mainColor,
-                                              width: 1,
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(4.0),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderSide: const BorderSide(
-                                              color: mainColor,
-                                              width: 1,
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(4.0),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(
-                              width: 10,
-                            ),
-                            if (isRecording)
-                              Expanded(
-                                child: InkWell(
-                                    onTap: () {
-                                      cancelRecording();
-                                    },
-                                    child: const CircleAvatar(
-                                      radius: 28,
-                                      child: Icon(
-                                        Icons.close,
-                                        // ? Icons.close
-                                        // : Icons.mic,
-
-                                        size: 35,
-                                        color: Colors.red,
-                                      ),
-                                    )),
-                              ),
-                            const SizedBox(
-                              width: 5,
-                            ),
-                            InkWell(
-                                onTap: () {
-                                  sendTextMessage();
-                                },
-                                child: CircleAvatar(
-                                  radius: 28,
-                                  child: Icon(
-                                    isShowSendButton
-                                        ? Icons.send
-                                        : isRecording
-                                            ? Icons.send
-                                            : Icons.mic,
-                                    // ? Icons.close
-                                    // : Icons.mic,
-
-                                    size: 35,
-                                  ),
-                                ))
-                          ],
-                        ),
-                        isShowEmojiContainer
-                            ? SizedBox(
-                                height: 310,
-                                child: EmojiPicker(
-                                  onEmojiSelected: ((category, emoji) {
-                                    setState(() {
-                                      _messageController.text =
-                                          _messageController.text + emoji.emoji;
-                                      _messageController.selection =
-                                          TextSelection.fromPosition(
-                                              TextPosition(
-                                                  offset: _messageController
-                                                      .text.length));
-                                    });
-                                    //       TextSelection(
-                                    //           baseOffset:
-                                    //               (_messageController.text +
-                                    //                       emoji.emoji)
-                                    //                   .length,
-                                    //           extentOffset:
-                                    //               (_messageController.text +
-                                    //                       emoji.emoji)
-                                    //                   .length);
-                                    // });
-
-                                    if (!isShowSendButton) {
-                                      setState(() {
-                                        isShowSendButton = true;
-                                      });
-                                    }
-                                  }),
-                                ),
-                              )
-                            : const SizedBox(),
-                      ],
-                    ),
+                  : getTextField(),
             );
           }
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 25, right: 15, left: 15),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    if (isRecording)
-                      AudioWaveforms(
-                        size: Size(
-                            MediaQuery.of(context).size.width / 1.95, 30.0),
-                        recorderController: _controller!,
-                        enableGesture: false,
-                        padding: const EdgeInsets.all(20),
-                        waveStyle: const WaveStyle(
-                          waveColor: mainColor,
-                          waveThickness: 5,
-                          backgroundColor: Colors.black,
-                          showDurationLabel: true,
-                          spacing: 8.0,
-                          durationStyle: TextStyle(color: mainColor),
-                          showBottom: true,
-                          extendWaveform: true,
-                          durationLinesColor: mainColor,
-                          showMiddleLine: false,
-                          //   gradient: ui.Gradient.linear(
-                          //     const Offset(70, 50),
-                          //     // Offset(MediaQuery.of(context).size.width / 2, 0),
-                          //     [Colors.red, Colors.green],
-                          // ),
-                        ),
-                      ),
-                    // if (messageReply != null)
+          return getTextField();
+          // return Padding(
+          //   padding: const EdgeInsets.only(bottom: 25, right: 15, left: 15),
+          //   child: Column(
+          //     children: [
+          //       Row(
+          //         children: [
+          //           if (isRecording)
+          //             AudioWaveforms(
+          //               size: Size(
+          //                   MediaQuery.of(context).size.width / 1.95, 30.0),
+          //               recorderController: _controller!,
+          //               enableGesture: false,
+          //               padding: const EdgeInsets.all(20),
+          //               waveStyle: const WaveStyle(
+          //                 waveColor: mainColor,
+          //                 waveThickness: 5,
+          //                 backgroundColor: Colors.black,
+          //                 showDurationLabel: true,
+          //                 spacing: 8.0,
+          //                 durationStyle: TextStyle(color: mainColor),
+          //                 showBottom: true,
+          //                 extendWaveform: true,
+          //                 durationLinesColor: mainColor,
+          //                 showMiddleLine: false,
+          //                 //   gradient: ui.Gradient.linear(
+          //                 //     const Offset(70, 50),
+          //                 //     // Offset(MediaQuery.of(context).size.width / 2, 0),
+          //                 //     [Colors.red, Colors.green],
+          //                 // ),
+          //               ),
+          //             ),
+          //           // if (messageReply != null)
 
-                    if (!isRecording)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                    maxHeight: 100, maxWidth: 100),
-                                child: TextFormField(
-                                  focusNode: focusNode,
-                                  controller: _messageController,
-                                  autofocus: false,
-                                  onFieldSubmitted: (val) {
-                                    if (_messageController.text.isNotEmpty) {
-                                      sendTextMessage();
-                                    }
-                                  },
-                                  onChanged: (val) {
-                                    if (val.isNotEmpty) {
-                                      if (!isShowSendButton) {
-                                        setState(() {
-                                          isShowSendButton = true;
-                                        });
-                                      }
-                                    } else {
-                                      setState(() {
-                                        isShowSendButton = false;
-                                      });
-                                    }
-                                  },
-                                  decoration: InputDecoration(
-                                    hintText: 'Message',
-                                    prefixIcon: IconButton(
-                                      onPressed: toggleEmojiKeyboardContainer,
-                                      icon: const Icon(
-                                        Icons.emoji_emotions,
-                                        color: mainColor,
-                                      ),
-                                    ),
-                                    suffixIcon: SizedBox(
-                                      width: isShowSendButton ? 0 : 100,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          IconButton(
-                                            onPressed: selectFile,
-                                            color: Colors.grey,
-                                            icon: const Icon(Icons.attach_file),
-                                          ),
-                                          if (!isShowSendButton)
-                                            IconButton(
-                                              onPressed: selectImage,
-                                              color: Colors.grey,
-                                              icon:
-                                                  const Icon(Icons.camera_alt),
-                                            )
-                                        ],
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderSide: const BorderSide(
-                                        color: mainColor,
-                                        width: 1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4.0),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: const BorderSide(
-                                        color: mainColor,
-                                        width: 1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4.0),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    if (isRecording)
-                      Expanded(
-                        child: InkWell(
-                            onTap: () {
-                              cancelRecording();
-                            },
-                            child: const CircleAvatar(
-                              radius: 28,
-                              child: Icon(
-                                Icons.close,
-                                // ? Icons.close
-                                // : Icons.mic,
+          //           if (!isRecording)
+          //             Expanded(
+          //               child: Row(
+          //                 children: [
+          //                   Expanded(
+          //                     child: Container(
+          //                       constraints: const BoxConstraints(
+          //                           maxHeight: 100, maxWidth: 100),
+          //                       child: TextFormField(
+          //                         focusNode: focusNode,
+          //                         controller: _messageController,
+          //                         autofocus: false,
+          //                         onFieldSubmitted: (val) {
+          //                           if (_messageController.text.isNotEmpty) {
+          //                             sendTextMessage();
+          //                           }
+          //                         },
+          //                         onChanged: (val) {
+          //                           if (val.isNotEmpty) {
+          //                             if (!isShowSendButton) {
+          //                               setState(() {
+          //                                 isShowSendButton = true;
+          //                               });
+          //                             }
+          //                           } else {
+          //                             setState(() {
+          //                               isShowSendButton = false;
+          //                             });
+          //                           }
+          //                         },
+          //                         decoration: InputDecoration(
+          //                           hintText: 'Message',
+          //                           prefixIcon: IconButton(
+          //                             onPressed: toggleEmojiKeyboardContainer,
+          //                             icon: const Icon(
+          //                               Icons.emoji_emotions,
+          //                               color: mainColor,
+          //                             ),
+          //                           ),
+          //                           suffixIcon: SizedBox(
+          //                             width: isShowSendButton ? 0 : 100,
+          //                             child: Row(
+          //                               mainAxisAlignment:
+          //                                   MainAxisAlignment.end,
+          //                               children: [
+          //                                 IconButton(
+          //                                   onPressed: selectFile,
+          //                                   color: Colors.grey,
+          //                                   icon: const Icon(Icons.attach_file),
+          //                                 ),
+          //                                 if (!isShowSendButton)
+          //                                   IconButton(
+          //                                     onPressed: selectImage,
+          //                                     color: Colors.grey,
+          //                                     icon:
+          //                                         const Icon(Icons.camera_alt),
+          //                                   )
+          //                               ],
+          //                             ),
+          //                           ),
+          //                           enabledBorder: OutlineInputBorder(
+          //                             borderSide: const BorderSide(
+          //                               color: mainColor,
+          //                               width: 1,
+          //                             ),
+          //                             borderRadius: BorderRadius.circular(4.0),
+          //                           ),
+          //                           focusedBorder: OutlineInputBorder(
+          //                             borderSide: const BorderSide(
+          //                               color: mainColor,
+          //                               width: 1,
+          //                             ),
+          //                             borderRadius: BorderRadius.circular(4.0),
+          //                           ),
+          //                         ),
+          //                       ),
+          //                     ),
+          //                   ),
+          //                 ],
+          //               ),
+          //             ),
+          //           const SizedBox(
+          //             width: 10,
+          //           ),
+          //           if (isRecording)
+          //             Expanded(
+          //               child: InkWell(
+          //                   onTap: () {
+          //                     cancelRecording();
+          //                   },
+          //                   child: const CircleAvatar(
+          //                     radius: 28,
+          //                     child: Icon(
+          //                       Icons.close,
+          //                       // ? Icons.close
+          //                       // : Icons.mic,
 
-                                size: 35,
-                                color: Colors.red,
-                              ),
-                            )),
-                      ),
-                    const SizedBox(
-                      width: 5,
-                    ),
-                    InkWell(
-                        onTap: () {
-                          sendTextMessage();
-                        },
-                        child: CircleAvatar(
-                          radius: 28,
-                          child: Icon(
-                            isShowSendButton
-                                ? Icons.send
-                                : isRecording
-                                    ? Icons.send
-                                    : Icons.mic,
-                            // ? Icons.close
-                            // : Icons.mic,
+          //                       size: 35,
+          //                       color: Colors.red,
+          //                     ),
+          //                   )),
+          //             ),
+          //           const SizedBox(
+          //             width: 5,
+          //           ),
+          //           InkWell(
+          //               onTap: () {
+          //                 sendTextMessage();
+          //               },
+          //               child: CircleAvatar(
+          //                 radius: 28,
+          //                 child: Icon(
+          //                   isShowSendButton
+          //                       ? Icons.send
+          //                       : isRecording
+          //                           ? Icons.send
+          //                           : Icons.mic,
+          //                   // ? Icons.close
+          //                   // : Icons.mic,
 
-                            size: 35,
-                          ),
-                        ))
-                  ],
-                ),
-                isShowEmojiContainer
-                    ? SizedBox(
-                        height: 310,
-                        child: EmojiPicker(
-                          onEmojiSelected: ((category, emoji) {
-                            setState(() {
-                              _messageController.text =
-                                  _messageController.text + emoji.emoji;
-                            });
+          //                   size: 35,
+          //                 ),
+          //               ))
+          //         ],
+          //       ),
+          //       isShowEmojiContainer
+          //           ? SizedBox(
+          //               height: 310,
+          //               child: EmojiPicker(
+          //                 onEmojiSelected: ((category, emoji) {
+          //                   setState(() {
+          //                     _messageController.text =
+          //                         _messageController.text + emoji.emoji;
+          //                   });
 
-                            if (!isShowSendButton) {
-                              setState(() {
-                                isShowSendButton = true;
-                              });
-                            }
-                          }),
-                        ),
-                      )
-                    : const SizedBox(),
-              ],
-            ),
-          );
+          //                   if (!isShowSendButton) {
+          //                     setState(() {
+          //                       isShowSendButton = true;
+          //                     });
+          //                   }
+          //                 }),
+          //               ),
+          //             )
+          //           : const SizedBox(),
+          //     ],
+          //   ),
+          // );
         });
   }
 }

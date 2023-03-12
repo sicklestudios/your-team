@@ -20,14 +20,15 @@ class CallMethods {
   }
 
   void storeCallInfo(String reciverId, String reciverName,
-      String reciverPhotoUrl, bool isAudioCall) async {
+      String reciverPhotoUrl, bool isAudioCall, bool isGroupCall) async {
     CallModel callModelReceiver = CallModel(
         receiverId: userInfo.uid,
         receiverName: userInfo.username,
         receiverPic: userInfo.photoUrl,
         isIncoming: true,
         timeSent: DateTime.now(),
-        isAudioCall: isAudioCall);
+        isAudioCall: isAudioCall,
+        isGroupCall: isGroupCall);
 
     CallModel callModelSender = CallModel(
         receiverId: reciverId,
@@ -35,7 +36,8 @@ class CallMethods {
         receiverPic: reciverPhotoUrl,
         isIncoming: false,
         timeSent: DateTime.now(),
-        isAudioCall: isAudioCall);
+        isAudioCall: isAudioCall,
+        isGroupCall: isGroupCall);
 
 //storing the call info in the database for both users
 

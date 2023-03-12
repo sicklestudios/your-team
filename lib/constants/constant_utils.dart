@@ -120,6 +120,16 @@ getRandom() {
 
 getMessageCard(var model, context, {bool isGroupChat = false}) {
   // Group model = models;
+  bool seen = false;
+  if (isGroupChat) {
+    if (model.isSeen.contains(firebaseAuth.currentUser!.uid)) {
+      seen = true;
+    } else {
+      seen = false;
+    }
+  } else {
+    seen = model.isSeen;
+  }
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
     child: Container(
@@ -131,15 +141,17 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
           Navigator.of(context).push(MaterialPageRoute(
               builder: (context) => ChatScreen(
                     contactModel: ChatContactModel(
-                        contactId:
-                            isGroupChat ? model.groupId : model.contactId,
-                        name: model.name,
-                        photoUrl: isGroupChat ? model.groupPic : model.photoUrl,
-                        timeSent: DateTime.now(),
-                        lastMessageBy: "",
-                        lastMessageId: '',
-                        isSeen: false,
-                        lastMessage: ""),
+                      contactId: isGroupChat ? model.groupId : model.contactId,
+                      name: model.name,
+                      photoUrl: isGroupChat ? model.groupPic : model.photoUrl,
+                      timeSent: DateTime.now(),
+                      lastMessageBy: "",
+                      lastMessageId: '',
+                      isSeen: false,
+                      lastMessage: "",
+                    ),
+                    people: isGroupChat ? model.membersUid : [],
+                    isGroupChat: isGroupChat,
                   )));
         },
         leading: Stack(
@@ -154,8 +166,7 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
                           // maxHeight: 50,
                         ))
                     : const CircleAvatar(
-                        radius: 25,
-                        backgroundImage: AssetImage('assets/user.png'))
+                        radius: 25, child: Icon(Icons.groups_outlined))
                 : model.photoUrl != ""
                     ? CircleAvatar(
                         radius: 25,
@@ -198,7 +209,7 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
                   //  bodyTextOverflow: TextOverflow.ellipsis,
                   fontWeight:
                       model.lastMessageBy != firebaseAuth.currentUser!.uid
-                          ? !model.isSeen
+                          ? !seen
                               ? FontWeight.bold
                               : FontWeight.normal
                           : FontWeight.normal),
@@ -209,7 +220,7 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
                   fontSize: 12,
                   fontWeight:
                       model.lastMessageBy != firebaseAuth.currentUser!.uid
-                          ? !model.isSeen
+                          ? !seen
                               ? FontWeight.bold
                               : FontWeight.normal
                           : FontWeight.normal),
@@ -231,7 +242,7 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
                         fontSize: 12,
                         fontWeight:
                             model.lastMessageBy != firebaseAuth.currentUser!.uid
-                                ? !model.isSeen
+                                ? !seen
                                     ? FontWeight.bold
                                     : FontWeight.normal
                                 : FontWeight.normal),
@@ -242,7 +253,7 @@ getMessageCard(var model, context, {bool isGroupChat = false}) {
               Icon(
                 Icons.circle,
                 color: model.lastMessageBy != firebaseAuth.currentUser!.uid
-                    ? !model.isSeen
+                    ? !seen
                         ? mainColor
                         : Colors.transparent
                     : Colors.transparent,
@@ -621,8 +632,8 @@ fetchUserInfo() async {
   }
 }
 
-showPeopleForTask(
-    BuildContext context, List usersList, VoidCallback refresh) async {
+showPeopleForTask(BuildContext context, List usersList, VoidCallback refresh,
+    {bool isForGroup = false, String groupId = ""}) async {
   var size = MediaQuery.of(context).size;
   return await showDialog(
       barrierDismissible: false,
@@ -652,7 +663,9 @@ showPeopleForTask(
                         body: Padding(
                       padding: const EdgeInsets.only(top: 20.0),
                       child: FutureBuilder<List<UserModel>>(
-                          future: ChatMethods().getContacts(),
+                          future: isForGroup
+                              ? ChatMethods().getMembersOfGroup(groupId)
+                              : ChatMethods().getContacts(),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -673,21 +686,54 @@ showPeopleForTask(
                                       shrinkWrap: true,
                                       itemBuilder: ((context, index) {
                                         var data = snapshot.data![index];
-                                        return InkWell(
-                                            onTap: () {
-                                              setState(() {
-                                                if (usersList
-                                                    .contains(data.uid)) {
-                                                  // usersModelList.remove(data);
-                                                  usersList.remove(data.uid);
-                                                } else {
-                                                  // usersModelList.add(data);
-                                                  usersList.add(data.uid);
-                                                }
-                                              });
-                                            },
-                                            child: getPeopleCard(data, context,
-                                                usersList.contains(data.uid)));
+                                        return isForGroup
+                                            ? InkWell(
+                                                onTap: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            ChatScreen(
+                                                              contactModel: ChatContactModel(
+                                                                  contactId:
+                                                                      data.uid,
+                                                                  name: data
+                                                                      .username,
+                                                                  photoUrl: data
+                                                                      .photoUrl,
+                                                                  timeSent:
+                                                                      DateTime
+                                                                          .now(),
+                                                                  lastMessageBy:
+                                                                      "",
+                                                                  lastMessageId:
+                                                                      "",
+                                                                  isSeen: false,
+                                                                  lastMessage:
+                                                                      ""),
+                                                            )),
+                                                  );
+                                                },
+                                                child: getForwardCard(
+                                                    data, context))
+                                            : InkWell(
+                                                onTap: () {
+                                                  setState(() {
+                                                    if (usersList
+                                                        .contains(data.uid)) {
+                                                      // usersModelList.remove(data);
+                                                      usersList
+                                                          .remove(data.uid);
+                                                    } else {
+                                                      // usersModelList.add(data);
+                                                      usersList.add(data.uid);
+                                                    }
+                                                  });
+                                                },
+                                                child: getPeopleCard(
+                                                    data,
+                                                    context,
+                                                    usersList
+                                                        .contains(data.uid)));
                                       })),
                                 ),
                                 // Padding(
@@ -1611,4 +1657,28 @@ getNewContactPrompt(context) {
       ),
     ),
   );
+}
+
+Future<String> getImage(String id, bool isGroup) async {
+  if (isGroup) {
+    return await firebaseFirestore
+        .collection('groups')
+        .doc(id)
+        .get()
+        .then((value) {
+      Group val = Group.fromMap(value.data()!);
+
+      return val.groupPic;
+    });
+  } else {
+    return await firebaseFirestore
+        .collection('users')
+        .doc(id)
+        .get()
+        .then((value) {
+      UserModel val = UserModel.getValuesFromSnap(value);
+
+      return val.photoUrl;
+    });
+  }
 }

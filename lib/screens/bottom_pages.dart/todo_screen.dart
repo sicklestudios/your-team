@@ -9,7 +9,9 @@ import 'package:yourteam/screens/task/edit_task.dart';
 
 class TodoScreen extends StatefulWidget {
   final String? id;
-  const TodoScreen({this.id, super.key});
+  final bool? isGroupChat;
+  final List? people;
+  const TodoScreen({this.id, this.isGroupChat, this.people, super.key});
 
   @override
   State<TodoScreen> createState() => _TodoScreenState();
@@ -41,7 +43,9 @@ class _TodoScreenState extends State<TodoScreen> {
         child: Column(
           children: [
             StreamBuilder<List<TodoModel>>(
-                stream: TaskMethods().getTodos(),
+                stream: TaskMethods().getTodos(
+                    isGroupChat: widget.isGroupChat ?? false,
+                    people: widget.people),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(

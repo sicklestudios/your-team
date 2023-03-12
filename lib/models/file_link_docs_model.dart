@@ -1,16 +1,19 @@
 class LinkModel {
   final String fileUrl;
   final DateTime timeSent;
+  final bool? isGroupChat;
 
   LinkModel({
     required this.fileUrl,
     required this.timeSent,
+    this.isGroupChat,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'fileUrl': fileUrl,
       'timeSent': timeSent.millisecondsSinceEpoch,
+      'isGroupChat': isGroupChat,
     };
   }
 
@@ -18,6 +21,7 @@ class LinkModel {
     return LinkModel(
       fileUrl: map['fileUrl'],
       timeSent: DateTime.fromMillisecondsSinceEpoch(map['timeSent']),
+      isGroupChat: map['isGroupChat'],
     );
   }
 }
@@ -26,11 +30,13 @@ class MediaModel {
   final String senderId;
   final String photoUrl;
   final DateTime timeSent;
+  final bool? isGroupChat;
 
   MediaModel({
     required this.senderId,
     required this.photoUrl,
     required this.timeSent,
+    this.isGroupChat,
   });
 
   Map<String, dynamic> toMap() {
@@ -38,6 +44,7 @@ class MediaModel {
       'senderId': senderId,
       'photoUrl': photoUrl,
       'timeSent': timeSent.millisecondsSinceEpoch,
+      'isGroupChat': isGroupChat,
     };
   }
 
@@ -46,6 +53,7 @@ class MediaModel {
       senderId: map['senderId'],
       photoUrl: map['photoUrl'],
       timeSent: DateTime.fromMillisecondsSinceEpoch(map['timeSent']),
+      isGroupChat: map['isGroupChat'] ?? false,
     );
   }
 }
@@ -55,12 +63,14 @@ class DocsModel {
   final String fileName;
   final String fileUrl;
   final DateTime timeSent;
+  final bool? isGroupChat;
 
   DocsModel({
     required this.senderId,
     required this.fileName,
     required this.fileUrl,
     required this.timeSent,
+    this.isGroupChat,
   });
 
   Map<String, dynamic> toMap() {
@@ -69,6 +79,7 @@ class DocsModel {
       'fileName': fileName,
       'fileUrl': fileUrl,
       'timeSent': timeSent.millisecondsSinceEpoch,
+      'isGroupChat': isGroupChat,
     };
   }
 
@@ -78,6 +89,7 @@ class DocsModel {
       fileName: map['fileName'],
       fileUrl: map['fileUrl'],
       timeSent: DateTime.fromMillisecondsSinceEpoch(map['timeSent']),
+      isGroupChat: map['isGroupChat'],
     );
   }
 }

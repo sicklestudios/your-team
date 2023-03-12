@@ -7,19 +7,31 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class MediaScreen extends StatefulWidget {
   final String? id;
-  const MediaScreen({this.id, super.key});
+  final bool? isGroupChat;
+  const MediaScreen({this.id, this.isGroupChat, super.key});
 
   @override
   State<MediaScreen> createState() => _MediaScreenState();
 }
 
 class _MediaScreenState extends State<MediaScreen> {
+  bool isGroupChat = false;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isGroupChat != null) {
+      isGroupChat = widget.isGroupChat!;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 20.0),
       child: FutureBuilder<List<MediaModel>>(
-          future: InfoStorage().getMedia(widget.id),
+          future: isGroupChat
+              ? InfoStorageGroup().getMedia(widget.id!)
+              : InfoStorage().getMedia(widget.id, isGroupChat),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -91,5 +103,4 @@ class _MediaScreenState extends State<MediaScreen> {
     );
   }
   //getting the stuff from other users media
-
 }

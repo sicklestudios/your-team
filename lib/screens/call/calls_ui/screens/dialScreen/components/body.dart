@@ -11,10 +11,9 @@ import 'package:permission_handler/permission_handler.dart';
 // import 'package:wakelock/wakelock.dart';
 import 'package:yourteam/call_constants_global.dart';
 import 'package:yourteam/call_ongoing_notification.dart';
-import 'package:yourteam/constants/constant_utils.dart';
+import 'package:yourteam/constants/colors.dart';
 import 'package:yourteam/constants/constants.dart';
 import 'package:yourteam/methods/get_call_token.dart';
-import 'package:yourteam/screens/call/call_methods.dart';
 import 'package:yourteam/screens/call/calls_ui/components/dial_user_pic.dart';
 import 'package:yourteam/screens/call/calls_ui/components/rounded_button.dart';
 import 'package:yourteam/screens/call/calls_ui/constants.dart';
@@ -33,6 +32,9 @@ class BodyState extends State<Body> {
   bool isinit = false;
   bool _isJoined = false;
   int? _remoteUid;
+  double xPosition = 0;
+  double yPosition = 0;
+  // List users = [];
   @override
   void initState() {
     super.initState();
@@ -41,6 +43,7 @@ class BodyState extends State<Body> {
 
     startForegroundTask();
     if (engine == null) {
+      users = [];
       // playing the audio of dialing the call
       startAudio();
       initialize();
@@ -200,7 +203,9 @@ class BodyState extends State<Body> {
           try {
             timer!.cancel();
             timer = null;
-            closeAgora();
+            if (users.isEmpty) {
+              closeAgora();
+            }
           } catch (e) {}
           appValueNotifier.setToInitial();
           Navigator.pop(context);
@@ -378,7 +383,7 @@ class BodyState extends State<Body> {
     return WithForegroundTask(
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(0),
           child: Center(
             child: Stack(
               // crossAxisAlignment: CrossAxisAlignment.center,
@@ -388,53 +393,21 @@ class BodyState extends State<Body> {
                     : getVideoCall(),
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: Row(
-                    // alignment: WrapAlignment.spaceBetween,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      SizedBox(
-                        width: getProportionateScreenWidth(80),
-                        child: ValueListenableBuilder(
-                          valueListenable: callValueNotifiers.isSpeakerOn,
-                          builder: (context, isSpeakerOn, child) {
-                            return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isSpeakerOn
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(50)),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: getProportionateScreenWidth(20),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  callValueNotifiers.setSpeakerValue(
-                                      !callValueNotifiers.isSpeakerOn.value);
-                                  await engine!.setEnableSpeakerphone(
-                                      callValueNotifiers.isSpeakerOn.value);
-                                },
-                                child: Icon(
-                                  Icons.volume_up_rounded,
-                                  color:
-                                      isSpeakerOn ? Colors.black : Colors.white,
-                                ));
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: SizedBox(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      // alignment: WrapAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        SizedBox(
                           width: getProportionateScreenWidth(80),
                           child: ValueListenableBuilder(
-                            valueListenable: callValueNotifiers.isMicOff,
-                            builder: (context, isMicOff, child) {
+                            valueListenable: callValueNotifiers.isSpeakerOn,
+                            builder: (context, isSpeakerOn, child) {
                               return ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: isMicOff
+                                    backgroundColor: isSpeakerOn
                                         ? Colors.white
                                         : Colors.transparent,
                                     shape: const RoundedRectangleBorder(
@@ -445,99 +418,137 @@ class BodyState extends State<Body> {
                                       vertical: getProportionateScreenWidth(20),
                                     ),
                                   ),
-                                  onPressed: () {
-                                    callValueNotifiers.setMicValue(
-                                        !callValueNotifiers.isMicOff.value);
-                                    engine!.muteLocalAudioStream(
-                                        callValueNotifiers.isMicOff.value);
+                                  onPressed: () async {
+                                    callValueNotifiers.setSpeakerValue(
+                                        !callValueNotifiers.isSpeakerOn.value);
+                                    await engine!.setEnableSpeakerphone(
+                                        callValueNotifiers.isSpeakerOn.value);
                                   },
                                   child: Icon(
-                                    isMicOff ? Icons.mic_off : Icons.mic,
-                                    color:
-                                        isMicOff ? Colors.black : Colors.white,
+                                    Icons.volume_up_rounded,
+                                    color: isSpeakerOn
+                                        ? Colors.black
+                                        : Colors.white,
                                   ));
                             },
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        width: getProportionateScreenWidth(80),
-                        child: ValueListenableBuilder(
-                          valueListenable: callValueNotifiers.isVideoOn,
-                          builder: (context, isVideoOn, child) {
-                            return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isVideoOn
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(50)),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: getProportionateScreenWidth(20),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  callValueNotifiers.setIsVideoOn(
-                                      !callValueNotifiers.isVideoOn.value);
-                                  if (isVideoOn == false) {
-                                    await engine!.enableVideo();
-                                  } else {
-                                    await engine!.disableVideo();
-                                  }
-                                  // VIDEO_OR_AUDIO_FLG =
-                                  //     !callValueNotifiers.isVideoOn.value;
-
-                                  setState(() {});
-                                },
-                                child: Icon(
-                                  isVideoOn
-                                      ? Icons.videocam
-                                      : Icons.videocam_off,
-                                  color:
-                                      isVideoOn ? Colors.black : Colors.white,
-                                ));
-                          },
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: SizedBox(
+                            width: getProportionateScreenWidth(80),
+                            child: ValueListenableBuilder(
+                              valueListenable: callValueNotifiers.isMicOff,
+                              builder: (context, isMicOff, child) {
+                                return ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isMicOff
+                                          ? Colors.white
+                                          : Colors.transparent,
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(50)),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical:
+                                            getProportionateScreenWidth(20),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      callValueNotifiers.setMicValue(
+                                          !callValueNotifiers.isMicOff.value);
+                                      engine!.muteLocalAudioStream(
+                                          callValueNotifiers.isMicOff.value);
+                                    },
+                                    child: Icon(
+                                      isMicOff ? Icons.mic_off : Icons.mic,
+                                      color: isMicOff
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ));
+                              },
+                            ),
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: RoundedButton(
-                          iconSrc: "assets/icons/call_end.svg",
-                          press: () async {
-                            setState(() {
-                              FlutterCallkitIncoming.endAllCalls();
-                              appValueNotifier.globalisCallOnGoing.value =
-                                  false;
-                            });
-                            try {
-                              player.release();
-                              player.dispose();
-                              timer!.cancel();
-                              timer = null;
-                              closeAgora();
-                            } catch (e) {}
-                            appValueNotifier.setToInitial();
-                            callValueNotifiers.setToInitial();
-                            Navigator.pop(context);
-                          },
-                          color: kRedColor,
-                          iconColor: Colors.white,
-                        ),
-                      )
+                        SizedBox(
+                          width: getProportionateScreenWidth(80),
+                          child: ValueListenableBuilder(
+                            valueListenable: callValueNotifiers.isVideoOn,
+                            builder: (context, isVideoOn, child) {
+                              return ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isVideoOn
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    shape: const RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(50)),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: getProportionateScreenWidth(20),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    callValueNotifiers.setIsVideoOn(
+                                        !callValueNotifiers.isVideoOn.value);
+                                    if (isVideoOn == false) {
+                                      await engine!.enableVideo();
+                                    } else {
+                                      await engine!.disableVideo();
+                                    }
+                                    // VIDEO_OR_AUDIO_FLG =
+                                    //     !callValueNotifiers.isVideoOn.value;
 
-                      // DialButton(
-                      //   iconSrc: Icons.mic_outlined,
-                      //   text: "Microphone",
-                      //   press: () {},
-                      // ),
-                      // DialButton(
-                      //   iconSrc: Icons.videocam_off,
-                      //   text: "Video",
-                      //   press: () {},
-                      // ),
-                    ],
+                                    setState(() {});
+                                  },
+                                  child: Icon(
+                                    isVideoOn
+                                        ? Icons.videocam
+                                        : Icons.videocam_off,
+                                    color:
+                                        isVideoOn ? Colors.black : Colors.white,
+                                  ));
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: RoundedButton(
+                            iconSrc: "assets/icons/call_end.svg",
+                            press: () async {
+                              setState(() {
+                                FlutterCallkitIncoming.endAllCalls();
+                                appValueNotifier.globalisCallOnGoing.value =
+                                    false;
+                              });
+                              try {
+                                player.release();
+                                player.dispose();
+                                timer!.cancel();
+                                timer = null;
+                                closeAgora();
+                              } catch (e) {}
+                              appValueNotifier.setToInitial();
+                              callValueNotifiers.setToInitial();
+                              Navigator.pop(context);
+                            },
+                            color: kRedColor,
+                            iconColor: Colors.white,
+                          ),
+                        )
+
+                        // DialButton(
+                        //   iconSrc: Icons.mic_outlined,
+                        //   text: "Microphone",
+                        //   press: () {},
+                        // ),
+                        // DialButton(
+                        //   iconSrc: Icons.videocam_off,
+                        //   text: "Video",
+                        //   press: () {},
+                        // ),
+                      ],
+                    ),
                   ),
                 ),
                 // const VerticalSpacing(),
@@ -546,6 +557,116 @@ class BodyState extends State<Body> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget makeRemoteVideo() {
+    if (users.isNotEmpty) {
+      if (users.length == 1) {
+        return AgoraVideoView(
+          controller: VideoViewController.remote(
+            rtcEngine: engine!,
+            canvas: VideoCanvas(uid: users[0]),
+            connection: RtcConnection(channelId: CHANNEL_NAME),
+          ),
+        );
+      }
+      //  else if (users.length == 2) {
+      //   return SizedBox(
+      //     width: MediaQuery.of(context).size.width,
+      //     height: MediaQuery.of(context).size.height,
+      //     child: Column(
+      //       children: [
+      //         Expanded(
+      //           child: AgoraVideoView(
+      //             controller: VideoViewController.remote(
+      //               rtcEngine: engine!,
+      //               canvas: VideoCanvas(uid: users[0]),
+      //               connection: RtcConnection(channelId: CHANNEL_NAME),
+      //             ),
+      //           ),
+      //         ),
+      //         Expanded(
+      //           child: AgoraVideoView(
+      //             controller: VideoViewController.remote(
+      //               rtcEngine: engine!,
+      //               canvas: VideoCanvas(uid: users[1]),
+      //               connection: RtcConnection(channelId: CHANNEL_NAME),
+      //             ),
+      //           ),
+      //         ),
+      //       ],
+      //     ),
+      //   );
+      // }
+      else {
+        var size = MediaQuery.of(context).size;
+        return SizedBox(
+          height: size.height,
+          width: size.width,
+          child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 200,
+                childAspectRatio: 11 / 20,
+                crossAxisSpacing: 5,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: mainColorFaded),
+                  child: AgoraVideoView(
+                    controller: VideoViewController.remote(
+                      rtcEngine: engine!,
+                      canvas: VideoCanvas(uid: users[index]),
+                      connection: RtcConnection(channelId: CHANNEL_NAME),
+                    ),
+                  ),
+                );
+              }),
+        );
+      }
+    } else {
+      if (_isJoined) {
+        return getLocalView();
+      } else {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+    }
+  }
+
+  Widget makeLocalVideo() {
+    return Stack(
+      children: [
+        SizedBox(
+          width: 100,
+          height: 130,
+          child: Positioned(
+              bottom: xPosition,
+              right: yPosition,
+              child: GestureDetector(
+                  // onPanUpdate: (tapInfo) {
+                  //   setState(() {
+                  //     xPosition = tapInfo.delta.dx;
+                  //     yPosition = tapInfo.delta.dy;
+                  //   });
+                  // },
+                  child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: AgoraVideoView(
+                  controller: VideoViewController(
+                    rtcEngine: engine!,
+                    canvas: VideoCanvas(uid: currentUserUid),
+                  ),
+                ),
+              ))),
+        )
+      ],
     );
   }
 
@@ -590,18 +711,13 @@ class BodyState extends State<Body> {
                 }
                 log(currentUserUid.toString());
                 return (engine != null)
-                    ? Column(
+                    ? Stack(
                         children: [
-                          if (_isJoined) getLocalView(),
-                          Expanded(
-                              child: AgoraVideoView(
-                            controller: VideoViewController.remote(
-                              rtcEngine: engine!,
-                              canvas: VideoCanvas(uid: _remoteUid),
-                              connection:
-                                  RtcConnection(channelId: CHANNEL_NAME),
-                            ),
-                          ))
+                          if (users.isEmpty) getLocalView(),
+                          if (users.isNotEmpty) makeRemoteVideo(),
+                          if (users.isNotEmpty)
+                            Positioned(
+                                bottom: 150, right: 2, child: makeLocalVideo()),
                         ],
                       )
                     : Column(
@@ -616,6 +732,33 @@ class BodyState extends State<Body> {
                           const Spacer(),
                         ],
                       );
+                // return (engine != null)
+                //     ? Column(
+                //         children: [
+                //           if (_isJoined) getLocalView(),
+                //           Expanded(
+                //               child: AgoraVideoView(
+                //             controller: VideoViewController.remote(
+                //               rtcEngine: engine!,
+                //               canvas: VideoCanvas(uid: _remoteUid),
+                //               connection:
+                //                   RtcConnection(channelId: CHANNEL_NAME),
+                //             ),
+                //           ))
+                //         ],
+                //       )
+                //     : Column(
+                //         children: [
+                //           const Spacer(),
+                //           DialUserPic(
+                //               image: CALLERDATA != null
+                //                   ? (CALLERDATA['photoUrl'] == null)
+                //                       ? staticPhotoUrl
+                //                       : CALLERDATA['photoUrl']
+                //                   : staticPhotoUrl),
+                //           const Spacer(),
+                //         ],
+                //       );
               },
             );
           },
@@ -625,16 +768,23 @@ class BodyState extends State<Body> {
   }
 
   getLocalView() {
-    try {
-      return Expanded(
-          child: AgoraVideoView(
-        controller: VideoViewController(
-          rtcEngine: engine!,
-          canvas: VideoCanvas(uid: currentUserUid),
+    if (_isJoined) {
+      try {
+        return AgoraVideoView(
+          controller: VideoViewController(
+            rtcEngine: engine!,
+            canvas: VideoCanvas(uid: currentUserUid),
+          ),
+        );
+      } catch (e) {
+        log("Local video: " + e.toString());
+      }
+    } else {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
         ),
-      ));
-    } catch (e) {
-      log("Local video: " + e.toString());
+      );
     }
   }
 
@@ -740,6 +890,7 @@ class BodyState extends State<Body> {
 
     stopForegroundTask();
     engine = null;
+    users = [];
     log("closing agora");
   }
 }

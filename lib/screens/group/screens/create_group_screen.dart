@@ -86,6 +86,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           lastMessage: '',
           groupPic: profileUrl,
           membersUid: [firebaseAuth.currentUser!.uid, ...peopleUid],
+          isSeen: [],
           timeSent: DateTime.now(),
         );
 

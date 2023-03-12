@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yourteam/constants/colors.dart';
 import 'package:yourteam/constants/message_enum.dart';
 import 'package:yourteam/screens/toppages/chat/widgets/display_text_image_file.dart';
 
@@ -12,6 +13,7 @@ class SenderMessageCard extends StatelessWidget {
   final String repliedText;
   final String username;
   final MessageEnum repliedMessageType;
+  final bool isGroupChat;
   const SenderMessageCard(
       {required this.photoUrl,
       required this.message,
@@ -22,6 +24,7 @@ class SenderMessageCard extends StatelessWidget {
       required this.username,
       this.isSelected,
       required this.repliedMessageType,
+      required this.isGroupChat,
       super.key});
   @override
   Widget build(BuildContext context) {
@@ -53,16 +56,32 @@ class SenderMessageCard extends StatelessWidget {
                       )),
                       color: Colors.white,
                       margin: const EdgeInsets.symmetric(horizontal: 5),
-                      child: Padding(
-                          // padding: const EdgeInsets.only(
-                          //     left: 10, right: 30, top: 5, bottom: 5),
-                          padding: const EdgeInsets.all(15),
-                          child: DisplayTextImageGIF(
-                              photoUrl: photoUrl,
-                              date: date,
-                              message: message,
-                              type: type,
-                              isSender: false)),
+                      child: Column(
+                        children: [
+                          if (isGroupChat)
+                            // if (username != "")
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 8.0, left: 15, right: 15),
+                              child: Text(username,
+                                  textAlign: TextAlign.start,
+                                  overflow: TextOverflow.clip,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: mainColor)),
+                            ),
+                          Padding(
+                              // padding: const EdgeInsets.only(
+                              //     left: 10, right: 30, top: 5, bottom: 5),
+                              padding: const EdgeInsets.all(15),
+                              child: DisplayTextImageGIF(
+                                  photoUrl: photoUrl,
+                                  date: date,
+                                  message: message,
+                                  type: type,
+                                  isSender: false)),
+                        ],
+                      ),
                     ),
                   ),
                 ],

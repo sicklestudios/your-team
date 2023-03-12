@@ -355,9 +355,7 @@ class FcmCallServices {
   static Future<void> respondToCall(bool value) async {
     try {
       var tempdata = await SharedPrefrenceUser.getCallData();
-
       var calldata = await jsonDecode(tempdata);
-
       var msg = {
         'call_accepted': value,
       };

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:yourteam/call_ongoing_notification.dart';
 import 'package:yourteam/constants/colors.dart';
 import 'package:yourteam/navigation_service.dart';
 import 'package:yourteam/screens/auth/login_screen.dart';
 import 'package:yourteam/screens/auth/splash_screen.dart';
-import 'package:yourteam/screens/call/calls_ui/screens/dialScreen/dial_screen.dart';
 import 'package:yourteam/screens/home_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:yourteam/service/fcmcallservices/fcmcallservices.dart';
@@ -18,8 +17,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   // await initializeService();
-
-  runApp(const MyApp());
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])
+      .then((_) {
+    runApp(const MyApp());
+  });
+  // runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {

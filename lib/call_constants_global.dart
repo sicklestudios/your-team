@@ -13,7 +13,7 @@ RtcEngine? engine;
 Timer? timer;
 final player = AudioPlayer();
 AudioCache? audioCache;
-final users = <int>[];
+var users = <int>[];
 final infoStrings = <String>[];
 bool isinit = false;
 

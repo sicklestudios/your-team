@@ -112,13 +112,29 @@ class TaskMethods {
     return res;
   }
 
-  Stream<List<TodoModel>> getTodos() {
+  Stream<List<TodoModel>> getTodos({bool isGroupChat = false, List? people}) {
+    bool shouldShow = true;
+    log(people.toString());
     return firebaseFirestore.collection('todos').snapshots().map((event) {
       List<TodoModel> messages = [];
       for (var document in event.docs) {
-        // log(document.data().toString());
+        shouldShow = true;
         try {
-          messages.add(TodoModel.fromMap(document.data()));
+          var map = TodoModel.fromMap(document.data());
+
+          if (isGroupChat) {
+            people!.forEach((element) {
+              if (!map.people.contains(element)) {
+                shouldShow = false;
+              } else {}
+            });
+
+            if (shouldShow) {
+              messages.add(map);
+            }
+          } else {
+            messages.add(map);
+          }
         } catch (e) {
           log(e.toString());
         }

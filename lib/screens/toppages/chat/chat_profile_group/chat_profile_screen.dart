@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:yourteam/constants/colors.dart';
@@ -15,10 +17,20 @@ class ChatProfileScreen extends StatefulWidget {
 }
 
 class _ChatProfileScreenState extends State<ChatProfileScreen> {
+  bool isGroupChat = false;
+  Future<UserModel> getUserInfo() async {
+    return firebaseFirestore
+        .collection('users')
+        .doc(widget.id)
+        .get()
+        .then((value) {
+      return UserModel.getValuesFromSnap(value);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: scaffoldBackgroundColor,
       appBar: AppBar(
@@ -33,13 +45,7 @@ class _ChatProfileScreenState extends State<ChatProfileScreen> {
       ),
       body: SingleChildScrollView(
         child: FutureBuilder<UserModel>(
-            future: firebaseFirestore
-                .collection('users')
-                .doc(widget.id)
-                .get()
-                .then((value) {
-              return UserModel.getValuesFromSnap(value);
-            }),
+            future: getUserInfo(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -72,10 +78,24 @@ class _ChatProfileScreenState extends State<ChatProfileScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 50,
-                                backgroundImage: userInfo.photoUrl != ""
+                                backgroundImage: data.photoUrl != ""
                                     ? CachedNetworkImageProvider(data.photoUrl)
                                     : const AssetImage("assets/user.png")
                                         as ImageProvider,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Center(
+                                  child: Text(
+                                    data.username == ""
+                                        ? "Nothing to show"
+                                        : data.username,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.visible,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -276,7 +296,11 @@ class _ChatProfileScreenState extends State<ChatProfileScreen> {
                               const SizedBox(
                                 height: 5,
                               ),
-                              Flexible(child: FileScreen(id: widget.id)),
+                              Flexible(
+                                  child: FileScreen(
+                                id: widget.id,
+                                isGroupChat: isGroupChat,
+                              )),
                             ],
                           ),
                         )),
@@ -316,7 +340,11 @@ class _ChatProfileScreenState extends State<ChatProfileScreen> {
                               const SizedBox(
                                 height: 5,
                               ),
-                              Flexible(child: MediaScreen(id: widget.id)),
+                              Flexible(
+                                  child: MediaScreen(
+                                id: widget.id,
+                                isGroupChat: isGroupChat,
+                              )),
                             ],
                           ),
                         )),
